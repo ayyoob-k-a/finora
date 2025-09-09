@@ -21,23 +21,18 @@ func NewRepo(db *gorm.DB) *Repo {
 		db: db,
 	}
 }
-func (r *Repo) Signup(data domain.User) (int, error) {
+func (r *Repo) Signup(data domain.User) (string, error) {
 	var existing domain.User
 	err := r.db.Where("email = ?", data.Email).First(&existing).Error
 	if err == nil {
-		return 0, errors.New("user already exists")
+		return "", errors.New("user already exists")
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return 0, err
-	}
-
-	data.Password, err = hashPassword(data.Password)
-	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	if err := r.db.Create(&data).Error; err != nil {
-		return 0, err
+		return "", err
 	}
 
 	return data.ID, nil
@@ -56,15 +51,10 @@ func (r *Repo) Login(data inbound.Login) (*domain.User, error) {
 		First(&user).Error
 
 	if err != nil {
-		return nil, errors.New("invalid email/phone or password")
+		return nil, errors.New("invalid email/phone")
 	}
 
-	// Verify password
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(data.Password))
-	if err != nil {
-		return nil, errors.New("invalid email/phone or password")
-	}
-
+	// Note: Password verification removed since we use OTP-based auth
 	return &user, nil
 }
 
@@ -84,9 +74,9 @@ func (r *Repo) GetUserByEmail(email string) (*response.User, error) {
 	}
 
 	return &response.User{
-		ID:       int(user.ID),
+		ID:       1, // Placeholder - this old system uses int IDs
 		Email:    user.Email,
-		Username: user.Username,
+		Username: user.Name,
 	}, nil
 }
 

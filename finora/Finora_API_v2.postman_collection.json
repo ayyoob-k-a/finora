@@ -1,0 +1,1437 @@
+{
+	"info": {
+		"_postman_id": "finora-api-v2-collection",
+		"name": "Finora API v2 - Complete Expense Management",
+		"description": "Updated Finora API collection with proper error handling, environment variables, and comprehensive testing for all endpoints.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "finora-api"
+	},
+	"item": [
+		{
+			"name": "🏥 Health & System",
+			"item": [
+				{
+					"name": "Health Check",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Response status is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has required fields', function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property('status');",
+									"    pm.expect(response).to.have.property('database');",
+									"    pm.expect(response).to.have.property('version');",
+									"    pm.expect(response).to.have.property('timestamp');",
+									"});",
+									"",
+									"// Save database status for other tests",
+									"const response = pm.response.json();",
+									"pm.environment.set('database_status', response.database);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Check API health status, database connection, and system information"
+					},
+					"response": []
+				}
+			],
+			"description": "System health and status endpoints"
+		},
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Send OTP",
+					"event": [
+						{
+							"listen": "pre-request",
+							"script": {
+								"exec": [
+									"// Clear any existing tokens before authentication",
+									"pm.environment.unset('access_token');",
+									"pm.environment.unset('refresh_token');",
+									"pm.environment.unset('user_id');"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if database is available",
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected') {",
+									"    pm.test('OTP sent successfully with database', function () {",
+									"        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response).to.have.property('message');",
+									"    });",
+									"} else {",
+									"    pm.test('Graceful error without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', false);",
+									"        pm.expect(response.error).to.include('Database not available');",
+									"    });",
+									"}",
+									"",
+									"// Save phone for next request",
+									"if (pm.response.code < 400) {",
+									"    const requestBody = JSON.parse(pm.request.body.raw);",
+									"    pm.environment.set('test_phone', requestBody.phone || requestBody.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\",\n  \"email\": \"{{test_email}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/send-otp",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "send-otp"]
+						},
+						"description": "Send OTP to phone number or email. Works in API-only mode with graceful error handling."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP (Mock)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected') {",
+									"    pm.test('OTP verified successfully', function () {",
+									"        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response).to.have.property('token');",
+									"        pm.expect(response).to.have.property('user');",
+									"        ",
+									"        // Save authentication tokens",
+									"        pm.environment.set('access_token', response.token);",
+									"        if (response.refresh_token) {",
+									"            pm.environment.set('refresh_token', response.refresh_token);",
+									"        }",
+									"        if (response.user && response.user.id) {",
+									"            pm.environment.set('user_id', response.user.id);",
+									"        }",
+									"    });",
+									"} else {",
+									"    pm.test('Graceful error without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response.error).to.include('Database not available');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\",\n  \"otp\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify-otp",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "verify-otp"]
+						},
+						"description": "Verify OTP and receive JWT tokens. Use any 6-digit number as OTP for testing."
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected') {",
+									"    pm.test('Token refreshed successfully', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('token');",
+									"        ",
+									"        // Update access token",
+									"        pm.environment.set('access_token', response.token);",
+									"    });",
+									"} else {",
+									"    pm.test('Service unavailable without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "refresh"]
+						},
+						"description": "Refresh JWT access token using refresh token"
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints with OTP-based login system"
+		},
+		{
+			"name": "👤 User Management",
+			"item": [
+				{
+					"name": "Get User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.environment.get('access_token')) {",
+									"    pm.test('Profile retrieved successfully', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response).to.have.property('data');",
+									"    });",
+									"} else if (!pm.environment.get('access_token')) {",
+									"    pm.test('Authentication required', function () {",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else {",
+									"    pm.test('Service unavailable without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "profile"]
+						},
+						"description": "Get current user's profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Update User Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.environment.get('access_token')) {",
+									"    pm.test('Profile updated successfully', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"    });",
+									"} else if (!pm.environment.get('access_token')) {",
+									"    pm.test('Authentication required', function () {",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else {",
+									"    pm.test('Service unavailable without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe Updated\",\n  \"photo_url\": \"https://example.com/photo.jpg\",\n  \"default_currency\": \"USD\",\n  \"monthly_income\": 5000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "profile"]
+						},
+						"description": "Update user profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Dashboard",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.environment.get('access_token')) {",
+									"    pm.test('Dashboard data retrieved', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response.data).to.have.property('balance');",
+									"        pm.expect(response.data).to.have.property('recent_transactions');",
+									"    });",
+									"} else if (!pm.environment.get('access_token')) {",
+									"    pm.test('Authentication required', function () {",
+									"        pm.expect(pm.response.code).to.equal(401);",
+									"    });",
+									"} else {",
+									"    pm.test('Service unavailable without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(503);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/dashboard",
+							"host": ["{{base_url}}"],
+							"path": ["api", "user", "dashboard"]
+						},
+						"description": "Get user dashboard with balance, recent transactions, and upcoming EMIs"
+					},
+					"response": []
+				}
+			],
+			"description": "User profile and dashboard management endpoints"
+		},
+		{
+			"name": "📊 Categories",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected') {",
+									"    pm.test('Categories retrieved successfully', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response.data).to.be.an('array');",
+									"        ",
+									"        // Save first category ID for other tests",
+									"        if (response.data.length > 0) {",
+									"            pm.environment.set('category_id', response.data[0].id);",
+									"        }",
+									"    });",
+									"} else {",
+									"    pm.test('Returns placeholder data without database', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('message');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories",
+							"host": ["{{base_url}}"],
+							"path": ["api", "categories"]
+						},
+						"description": "Get all expense and income categories. Returns placeholder data in API-only mode."
+					},
+					"response": []
+				}
+			],
+			"description": "Expense and income categories management"
+		},
+		{
+			"name": "💸 Transactions",
+			"item": [
+				{
+					"name": "Create Transaction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.environment.get('access_token')) {",
+									"    pm.test('Transaction created successfully', function () {",
+									"        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        ",
+									"        if (response.data && response.data.id) {",
+									"            pm.environment.set('transaction_id', response.data.id);",
+									"        }",
+									"    });",
+									"} else {",
+									"    pm.test('Expected response for current state', function () {",
+									"        pm.expect(pm.response.code).to.be.oneOf([401, 503]);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"expense\",\n  \"amount\": 25.50,\n  \"category_id\": \"{{category_id}}\",\n  \"description\": \"Coffee and pastry\",\n  \"transaction_date\": \"{{$isoTimestamp}}\",\n  \"is_recurring\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/transactions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "transactions"]
+						},
+						"description": "Create a new transaction (income, expense, lend, borrow)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transactions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.environment.get('access_token')) {",
+									"    pm.test('Transactions retrieved successfully', function () {",
+									"        pm.expect(pm.response.code).to.equal(200);",
+									"        const response = pm.response.json();",
+									"        pm.expect(response).to.have.property('success', true);",
+									"        pm.expect(response.data).to.have.property('transactions');",
+									"        pm.expect(response.data).to.have.property('pagination');",
+									"    });",
+									"} else {",
+									"    pm.test('Expected response for current state', function () {",
+									"        pm.expect(pm.response.code).to.be.oneOf([401, 503]);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions?page=1&limit=10&type=expense",
+							"host": ["{{base_url}}"],
+							"path": ["api", "transactions"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (default: 1)"
+								},
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Items per page (default: 20)"
+								},
+								{
+									"key": "type",
+									"value": "expense",
+									"description": "Filter by transaction type"
+								},
+								{
+									"key": "start_date",
+									"value": "2024-01-01",
+									"description": "Start date filter (YYYY-MM-DD)",
+									"disabled": true
+								},
+								{
+									"key": "end_date",
+									"value": "2024-12-31",
+									"description": "End date filter (YYYY-MM-DD)",
+									"disabled": true
+								},
+								{
+									"key": "category_id",
+									"value": "{{category_id}}",
+									"description": "Filter by category",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get user transactions with filtering, pagination, and search"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transaction by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "transactions", "{{transaction_id}}"]
+						},
+						"description": "Get specific transaction details by ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Transaction",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"expense\",\n  \"amount\": 30.00,\n  \"category_id\": \"{{category_id}}\",\n  \"description\": \"Updated: Coffee, pastry, and tip\",\n  \"transaction_date\": \"{{$isoTimestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "transactions", "{{transaction_id}}"]
+						},
+						"description": "Update an existing transaction"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Transaction",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "transactions", "{{transaction_id}}"]
+						},
+						"description": "Delete a transaction permanently"
+					},
+					"response": []
+				}
+			],
+			"description": "Complete transaction management system with CRUD operations"
+		},
+		{
+			"name": "📅 EMI Management",
+			"item": [
+				{
+					"name": "Create EMI",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const dbStatus = pm.environment.get('database_status');",
+									"",
+									"if (dbStatus === 'connected' && pm.response.code < 400) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.id) {",
+									"        pm.environment.set('emi_id', response.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Car Loan\",\n  \"total_amount\": 25000.00,\n  \"monthly_amount\": 450.00,\n  \"start_date\": \"2024-01-01T00:00:00Z\",\n  \"end_date\": \"2029-01-01T00:00:00Z\",\n  \"due_date\": 5,\n  \"description\": \"Monthly car loan payment\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/emis",
+							"host": ["{{base_url}}"],
+							"path": ["api", "emis"]
+						},
+						"description": "Create a new EMI (Equated Monthly Installment) plan"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All EMIs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/emis",
+							"host": ["{{base_url}}"],
+							"path": ["api", "emis"]
+						},
+						"description": "Get all user EMIs with next due dates and remaining months"
+					},
+					"response": []
+				},
+				{
+					"name": "Record EMI Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 450.00,\n  \"payment_date\": \"{{$isoTimestamp}}\",\n  \"due_month\": \"2024-01-01T00:00:00Z\",\n  \"notes\": \"January payment\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/emis/{{emi_id}}/payment",
+							"host": ["{{base_url}}"],
+							"path": ["api", "emis", "{{emi_id}}", "payment"]
+						},
+						"description": "Record a payment for an EMI"
+					},
+					"response": []
+				},
+				{
+					"name": "Get EMI Payment History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/emis/{{emi_id}}/payments",
+							"host": ["{{base_url}}"],
+							"path": ["api", "emis", "{{emi_id}}", "payments"]
+						},
+						"description": "Get complete payment history for a specific EMI"
+					},
+					"response": []
+				}
+			],
+			"description": "EMI (Equated Monthly Installment) management and payment tracking"
+		},
+		{
+			"name": "👥 Friend Management",
+			"item": [
+				{
+					"name": "Send Friend Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+1987654321\",\n  \"message\": \"Let's track expenses together!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/friends/request",
+							"host": ["{{base_url}}"],
+							"path": ["api", "friends", "request"]
+						},
+						"description": "Send a friend request by phone number"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Friends List",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code < 400) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.pending_requests && response.data.pending_requests.length > 0) {",
+									"        pm.environment.set('friend_request_id', response.data.pending_requests[0].id);",
+									"    }",
+									"    if (response.data && response.data.friends && response.data.friends.length > 0) {",
+									"        pm.environment.set('friend_id', response.data.friends[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/friends",
+							"host": ["{{base_url}}"],
+							"path": ["api", "friends"]
+						},
+						"description": "Get friends list and pending friend requests"
+					},
+					"response": []
+				},
+				{
+					"name": "Accept/Reject Friend Request",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"accept\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/friends/request/{{friend_request_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "friends", "request", "{{friend_request_id}}"]
+						},
+						"description": "Accept or reject a friend request (action: 'accept' or 'reject')"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Friend",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/friends/{{friend_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "friends", "{{friend_id}}"]
+						},
+						"description": "Remove a friend from friends list"
+					},
+					"response": []
+				}
+			],
+			"description": "Friend system for sharing expenses and splitting costs"
+		},
+		{
+			"name": "👨‍👩‍👧‍👦 Group Management",
+			"item": [
+				{
+					"name": "Create Expense Group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code < 400) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.id) {",
+									"        pm.environment.set('group_id', response.data.id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Weekend Trip\",\n  \"description\": \"Mountain hiking trip expenses\",\n  \"member_ids\": [\"{{friend_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups"]
+						},
+						"description": "Create a new expense group with friends"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups"]
+						},
+						"description": "Get all user groups with expense summaries"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}"]
+						},
+						"description": "Get detailed group information with members and balances"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Group Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 150.00,\n  \"description\": \"Accommodation booking\",\n  \"expense_date\": \"{{$isoTimestamp}}\",\n  \"split_type\": \"equal\",\n  \"splits\": [\n    {\n      \"user_id\": \"{{user_id}}\",\n      \"amount\": 75.00\n    },\n    {\n      \"user_id\": \"{{friend_id}}\",\n      \"amount\": 75.00\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/expenses",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "expenses"]
+						},
+						"description": "Add an expense to a group with split calculations"
+					},
+					"response": []
+				},
+				{
+					"name": "Settle Group Balances",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settlements\": [\n    {\n      \"from_user_id\": \"{{friend_id}}\",\n      \"to_user_id\": \"{{user_id}}\",\n      \"amount\": 25.00,\n      \"description\": \"Settling trip expenses\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/settle",
+							"host": ["{{base_url}}"],
+							"path": ["api", "groups", "{{group_id}}", "settle"]
+						},
+						"description": "Settle balances between group members"
+					},
+					"response": []
+				}
+			],
+			"description": "Group expense management with automatic split calculations"
+		},
+		{
+			"name": "📈 Reports & Analytics",
+			"item": [
+				{
+					"name": "Monthly Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/monthly?month=2024-01",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "monthly"],
+							"query": [
+								{
+									"key": "month",
+									"value": "2024-01",
+									"description": "Month in YYYY-MM format"
+								}
+							]
+						},
+						"description": "Get monthly spending report with category breakdown and trends"
+					},
+					"response": []
+				},
+				{
+					"name": "Category Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/category/{{category_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "category", "{{category_id}}"]
+						},
+						"description": "Get detailed category-wise spending analysis"
+					},
+					"response": []
+				},
+				{
+					"name": "Yearly Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/yearly?year=2024",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports", "yearly"],
+							"query": [
+								{
+									"key": "year",
+									"value": "2024",
+									"description": "Year in YYYY format"
+								}
+							]
+						},
+						"description": "Get yearly financial summary and trends"
+					},
+					"response": []
+				}
+			],
+			"description": "Financial reports and analytics for spending insights"
+		},
+		{
+			"name": "🔔 Notifications",
+			"item": [
+				{
+					"name": "Get Notifications",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code < 400) {",
+									"    const response = pm.response.json();",
+									"    if (response.data && response.data.notifications && response.data.notifications.length > 0) {",
+									"        pm.environment.set('notification_id', response.data.notifications[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications?page=1&limit=20&unread_only=false",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications"],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "unread_only",
+									"value": "false",
+									"description": "Show only unread notifications"
+								}
+							]
+						},
+						"description": "Get user notifications with pagination and filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notification_id}}/read",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "{{notification_id}}", "read"]
+						},
+						"description": "Mark a specific notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/mark-all-read",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "mark-all-read"]
+						},
+						"description": "Mark all user notifications as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notification_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "notifications", "{{notification_id}}"]
+						},
+						"description": "Delete a specific notification"
+					},
+					"response": []
+				}
+			],
+			"description": "Notification management for EMI reminders, friend requests, etc."
+		},
+		{
+			"name": "🧪 Testing & Utilities",
+			"item": [
+				{
+					"name": "Test Database Connection",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Database connection test completed', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+									"    const response = pm.response.json();",
+									"    ",
+									"    if (pm.response.code === 200) {",
+									"        pm.test('Database is connected', function () {",
+									"            pm.expect(response.database).to.equal('connected');",
+									"        });",
+									"        console.log('✅ Database is connected and functional');",
+									"    } else {",
+									"        pm.test('API is running in degraded mode', function () {",
+									"            pm.expect(response.error).to.include('Database not available');",
+									"        });",
+									"        console.log('⚠️ API running without database - limited functionality');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories",
+							"host": ["{{base_url}}"],
+							"path": ["api", "categories"]
+						},
+						"description": "Test database connection by attempting to fetch categories"
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Environment Variables",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Clear all test-related environment variables",
+									"pm.environment.unset('access_token');",
+									"pm.environment.unset('refresh_token');",
+									"pm.environment.unset('user_id');",
+									"pm.environment.unset('transaction_id');",
+									"pm.environment.unset('emi_id');",
+									"pm.environment.unset('friend_id');",
+									"pm.environment.unset('friend_request_id');",
+									"pm.environment.unset('group_id');",
+									"pm.environment.unset('category_id');",
+									"pm.environment.unset('notification_id');",
+									"",
+									"console.log('🧹 Environment variables cleared');",
+									"",
+									"// This request will fail (intended) to just run the pre-request script",
+									"pm.request.url = 'about:blank';"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "about:blank",
+							"protocol": "about",
+							"host": ["blank"]
+						},
+						"description": "Utility request to clear all environment variables. Will fail intentionally after clearing variables."
+					},
+					"response": []
+				}
+			],
+			"description": "Testing utilities and database connection diagnostics"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script",
+					"// Auto-set base URL if not configured",
+					"if (!pm.environment.get('base_url')) {",
+					"    pm.environment.set('base_url', 'http://localhost:8081');",
+					"}",
+					"",
+					"// Auto-set test credentials if not configured",
+					"if (!pm.environment.get('test_phone')) {",
+					"    pm.environment.set('test_phone', '+1234567890');",
+					"}",
+					"if (!pm.environment.get('test_email')) {",
+					"    pm.environment.set('test_email', 'test@finora.app');",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script",
+					"pm.test('Response time is reasonable', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+					"});",
+					"",
+					"// Log response details for debugging",
+					"if (pm.response.code >= 400) {",
+					"    console.log('❌ Request failed:', pm.request.method, pm.request.url);",
+					"    console.log('Status:', pm.response.code, pm.response.status);",
+					"    if (pm.response.json) {",
+					"        try {",
+					"            console.log('Error details:', JSON.stringify(pm.response.json(), null, 2));",
+					"        } catch (e) {",
+					"            console.log('Raw response:', pm.response.text());",
+					"        }",
+					"    }",
+					"} else {",
+					"    console.log('✅ Request successful:', pm.request.method, pm.request.url);",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "test_phone",
+			"value": "+1234567890",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "test@finora.app",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "transaction_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "emi_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "friend_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "friend_request_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "group_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "category_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "notification_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "database_status",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -1,0 +1,1091 @@
+{
+	"info": {
+		"_postman_id": "finora-api-collection",
+		"name": "Finora API - Expense Management",
+		"description": "Complete API collection for Finora expense management application with authentication, user management, transactions, EMIs, friends, groups, and reporting.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🏥 Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check API health status and database connection"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Send OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save phone number for next requests",
+									"if (pm.response.json().success) {",
+									"    pm.environment.set('test_phone', pm.request.body.raw ? JSON.parse(pm.request.body.raw).phone : '+1234567890');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+1234567890\",\n  \"email\": \"user@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/send-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"send-otp"
+							]
+						},
+						"description": "Send OTP to phone number or email for authentication"
+					},
+					"response": []
+				},
+				{
+					"name": "Verify OTP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Save JWT token from response",
+									"if (pm.response.json().success) {",
+									"    pm.environment.set('jwt_token', pm.response.json().token);",
+									"    pm.environment.set('user_id', pm.response.json().user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"{{test_phone}}\",\n  \"otp\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/verify-otp",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify-otp"
+							]
+						},
+						"description": "Verify OTP and get JWT authentication token"
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{jwt_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Refresh JWT authentication token"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👤 User Management",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"profile"
+							]
+						},
+						"description": "Get current user profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe Updated\",\n  \"photo_url\": \"https://example.com/photo.jpg\",\n  \"default_currency\": \"USD\",\n  \"monthly_income\": 6000.00\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/user/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"profile"
+							]
+						},
+						"description": "Update user profile information"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/user/dashboard",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"user",
+								"dashboard"
+							]
+						},
+						"description": "Get user dashboard with balance, recent transactions, and upcoming EMIs"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📊 Categories",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/categories",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"categories"
+							]
+						},
+						"description": "Get all expense and income categories"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "💸 Transactions",
+			"item": [
+				{
+					"name": "Create Transaction",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"expense\",\n  \"amount\": 100.50,\n  \"category_id\": \"category-uuid-here\",\n  \"description\": \"Coffee with friends\",\n  \"transaction_date\": \"2024-01-01T00:00:00Z\",\n  \"is_recurring\": false,\n  \"recurring_frequency\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/transactions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"transactions"
+							]
+						},
+						"description": "Create a new transaction (income, expense, lend, borrow)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transactions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions?page=1&limit=20&type=expense&start_date=2024-01-01&end_date=2024-12-31",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"transactions"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "type",
+									"value": "expense",
+									"description": "Transaction type filter"
+								},
+								{
+									"key": "start_date",
+									"value": "2024-01-01",
+									"description": "Start date filter"
+								},
+								{
+									"key": "end_date",
+									"value": "2024-12-31",
+									"description": "End date filter"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search term",
+									"disabled": true
+								},
+								{
+									"key": "category_id",
+									"value": "",
+									"description": "Category filter",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Get user transactions with filtering and pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Transaction by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"transactions",
+								"{{transaction_id}}"
+							]
+						},
+						"description": "Get specific transaction details"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Transaction",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"expense\",\n  \"amount\": 120.75,\n  \"category_id\": \"category-uuid-here\",\n  \"description\": \"Updated: Coffee and pastry\",\n  \"transaction_date\": \"2024-01-01T00:00:00Z\",\n  \"is_recurring\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"transactions",
+								"{{transaction_id}}"
+							]
+						},
+						"description": "Update an existing transaction"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Transaction",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"transactions",
+								"{{transaction_id}}"
+							]
+						},
+						"description": "Delete a transaction"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📅 EMI Management",
+			"item": [
+				{
+					"name": "Create EMI",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Home Loan\",\n  \"total_amount\": 500000.00,\n  \"monthly_amount\": 2000.00,\n  \"start_date\": \"2024-01-01T00:00:00Z\",\n  \"end_date\": \"2044-01-01T00:00:00Z\",\n  \"due_date\": 15\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/emis",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"emis"
+							]
+						},
+						"description": "Create a new EMI (Equated Monthly Installment)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get EMIs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/emis",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"emis"
+							]
+						},
+						"description": "Get all user EMIs with next due dates and remaining months"
+					},
+					"response": []
+				},
+				{
+					"name": "Record EMI Payment",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 2000.00,\n  \"payment_date\": \"2024-01-15T00:00:00Z\",\n  \"due_month\": \"2024-01-01T00:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/emis/{{emi_id}}/payment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"emis",
+								"{{emi_id}}",
+								"payment"
+							]
+						},
+						"description": "Record a payment for an EMI"
+					},
+					"response": []
+				},
+				{
+					"name": "Get EMI Payment History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/emis/{{emi_id}}/payments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"emis",
+								"{{emi_id}}",
+								"payments"
+							]
+						},
+						"description": "Get payment history for a specific EMI"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Friend Management",
+			"item": [
+				{
+					"name": "Send Friend Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+1987654321\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/friends/request",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"friends",
+								"request"
+							]
+						},
+						"description": "Send a friend request by phone number"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Friends List",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/friends",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"friends"
+							]
+						},
+						"description": "Get friends list and pending requests"
+					},
+					"response": []
+				},
+				{
+					"name": "Accept/Reject Friend Request",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"action\": \"accept\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/friends/request/{{request_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"friends",
+								"request",
+								"{{request_id}}"
+							]
+						},
+						"description": "Accept or reject a friend request (action: accept/reject)"
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Friend",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/friends/{{friend_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"friends",
+								"{{friend_id}}"
+							]
+						},
+						"description": "Remove a friend from friends list"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👨‍👩‍👧‍👦 Group Management",
+			"item": [
+				{
+					"name": "Create Group",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Vacation Trip\",\n  \"description\": \"Beach vacation expenses\",\n  \"member_ids\": [\"friend-uuid-1\", \"friend-uuid-2\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"groups"
+							]
+						},
+						"description": "Create a new expense group"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Groups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"groups"
+							]
+						},
+						"description": "Get all user groups with expense summaries"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Group Details",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"groups",
+								"{{group_id}}"
+							]
+						},
+						"description": "Get detailed group information with members and balances"
+					},
+					"response": []
+				},
+				{
+					"name": "Add Group Expense",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 300.00,\n  \"description\": \"Hotel booking\",\n  \"expense_date\": \"2024-01-01T00:00:00Z\",\n  \"split_type\": \"equal\",\n  \"splits\": [\n    {\n      \"user_id\": \"user-uuid-1\",\n      \"amount\": 100.00\n    },\n    {\n      \"user_id\": \"user-uuid-2\",\n      \"amount\": 100.00\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/expenses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"groups",
+								"{{group_id}}",
+								"expenses"
+							]
+						},
+						"description": "Add an expense to a group with split calculations"
+					},
+					"response": []
+				},
+				{
+					"name": "Settle Group Balances",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"settlements\": [\n    {\n      \"from_user_id\": \"user-uuid-1\",\n      \"to_user_id\": \"user-uuid-2\",\n      \"amount\": 50.00\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/groups/{{group_id}}/settle",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"groups",
+								"{{group_id}}",
+								"settle"
+							]
+						},
+						"description": "Settle balances between group members"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📈 Reports",
+			"item": [
+				{
+					"name": "Monthly Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/monthly?month=2024-01",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reports",
+								"monthly"
+							],
+							"query": [
+								{
+									"key": "month",
+									"value": "2024-01",
+									"description": "Month in YYYY-MM format"
+								}
+							]
+						},
+						"description": "Get monthly spending report with category breakdown and daily trends"
+					},
+					"response": []
+				},
+				{
+					"name": "Category Report",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports/category/{{category_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"reports",
+								"category",
+								"{{category_id}}"
+							]
+						},
+						"description": "Get detailed category-wise spending report"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔔 Notifications",
+			"item": [
+				{
+					"name": "Get Notifications",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications?page=1&limit=20&unread_only=false",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Items per page"
+								},
+								{
+									"key": "unread_only",
+									"value": "false",
+									"description": "Show only unread notifications"
+								}
+							]
+						},
+						"description": "Get user notifications with pagination"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/{{notification_id}}/read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"{{notification_id}}",
+								"read"
+							]
+						},
+						"description": "Mark a specific notification as read"
+					},
+					"response": []
+				},
+				{
+					"name": "Mark All Notifications as Read",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/notifications/mark-all-read",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"notifications",
+								"mark-all-read"
+							]
+						},
+						"description": "Mark all notifications as read"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8081",
+			"type": "string"
+		},
+		{
+			"key": "jwt_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "user_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_phone",
+			"value": "+1234567890",
+			"type": "string"
+		},
+		{
+			"key": "transaction_id",
+			"value": "transaction-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "emi_id",
+			"value": "emi-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "friend_id",
+			"value": "friend-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "request_id",
+			"value": "request-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "group_id",
+			"value": "group-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "category_id",
+			"value": "category-uuid-here",
+			"type": "string"
+		},
+		{
+			"key": "notification_id",
+			"value": "notification-uuid-here",
+			"type": "string"
+		}
+	]
+}

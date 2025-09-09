@@ -21,7 +21,7 @@ func InitDI(cfg configs.Config) error {
 
 	// Here you can set up your server with the database connection
 	repoInstance := repo.NewRepo(db)
-	usecase := usecase.NewUsecase(repoInstance, cfg.Mail)
+	usecase := usecase.NewUsecase(repoInstance)
 	handler := handler.NewHandler(usecase)
 	routes.AuthRoutes(ginServer, handler)
 	server.StartServer(ginServer)

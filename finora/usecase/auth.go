@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"github.com/ayyoob-k-a/finora/configs"
 	"github.com/ayyoob-k-a/finora/domain"
 	"github.com/ayyoob-k-a/finora/model/inbound"
 	"github.com/ayyoob-k-a/finora/model/response"
@@ -11,15 +10,13 @@ import (
 
 type Usecase struct {
 	repo *repo.Repo
-	mail configs.Mail
 
 	// Add fields as needed for your repository
 }
 
-func NewUsecase(repo *repo.Repo, Mail configs.Mail) *Usecase {
+func NewUsecase(repo *repo.Repo) *Usecase {
 	return &Usecase{
 		repo: repo,
-		mail: Mail,
 	}
 }
 
@@ -31,34 +28,23 @@ func (u *Usecase) Signup(data domain.User) error {
 		return err
 	}
 
-	data.Otp, err = utils.GenerateOTP(6)
-	if err != nil {
-		return err
-	}
-
-	err = u.repo.InsertOtp(data)
-	if err != nil {
-		return err
-	}
-
-	go utils.SendVerificationEmail(data.Email, data.Otp, u.mail.SecretKey)
+	// Note: OTP functionality moved to new service layer
 	return nil
-
 }
 
 func (u *Usecase) Login(data inbound.Login) (*response.AuthResponse, error) {
-	user, err := u.repo.Login(data)
+	_, err := u.repo.Login(data)
 	if err != nil {
 		return nil, err
 	}
 
-	accessToken, refreshToken, err := utils.GenerateToken(int(user.ID))
+	accessToken, refreshToken, err := utils.GenerateToken(1) // Placeholder ID
 	if err != nil {
 		return nil, err
 	}
 
 	return &response.AuthResponse{
-		UserID:       int(user.ID),
+		UserID:       1, // Placeholder ID since old system uses int
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil

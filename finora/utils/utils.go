@@ -2,13 +2,10 @@ package utils
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/tls"
 	"fmt"
 	"html/template"
-	"math/big"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -155,22 +152,6 @@ func SendVerificationEmail(recipientEmail string, otp int, credentials string) e
 
 	return nil
 
-}
-
-func GenerateOTP(length int) (int, error) {
-	otp := ""
-	for i := 0; i < length; i++ {
-		num, err := rand.Int(rand.Reader, big.NewInt(10)) // 0–9
-		if err != nil {
-			return 0, fmt.Errorf("error generating random number: %v", err)
-		}
-		otp += fmt.Sprintf("%d", num)
-	}
-	otpInt, err := strconv.Atoi(otp)
-	if err != nil {
-		return 0, fmt.Errorf("error converting OTP to integer: %v", err)
-	}
-	return otpInt, nil
 }
 
 // // Enhanced Send method with comprehensive monitoring and debugging
